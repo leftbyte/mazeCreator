@@ -5,18 +5,15 @@
 // Tested using 'V8 version 3.23.15'
 // - - - - - - - - - - - - - - - - - - - - - - -
 
-var MazeCreator = function() {
+var MazeCreator = function(dimX, dimY) {
     var g_debugLevel = 3;
-    var g_gridDim = [15, 15];
+    var g_gridDim = [dimX, dimY];
     var g_mazeStart = [0, 0];
     var g_mazeEnd = [g_gridDim[0] - 1, g_gridDim[1] - 1];
     // var g_minFakePaths = Math.floor(Math.sqrt(g_gridDim[0] * g_gridDim[1]));
     var g_minFakePaths = 10;
-    // The minimum solution length may be violated if the maze has created paths
-    // that have blocked a solution.  See the use of 'allowUsedPaths' in
-    // getNextValidPath.
-    // var g_minSlnLen = Math.floor(Math.sqrt(g_gridDim[0] * g_gridDim[1]));
-    var g_minSlnLen = 5;
+    var g_minSlnLen = Math.floor(Math.sqrt(g_gridDim[0] * g_gridDim[1]));
+    // var g_minSlnLen = 5;
 
     var UNDEFINED = 0;
     var START     = 1;
@@ -126,10 +123,7 @@ var MazeCreator = function() {
         }
     };
 
-
-    // XXX Is there a more generic way of doing the NESW functions without repeating
-    // code for each orientation?
-    var cell = function(x, y) {
+    var cell = function(x, y, grid) {
         var north;
         var east;
         var south;
@@ -144,6 +138,25 @@ var MazeCreator = function() {
             },
             getNumNeighbors: function() {
                 return numNeighbors;
+            },
+            // Checks the cell's neighbors to see if its near the end
+            isNearEnd: function() {
+                var mat = grid.getGrid();
+                var maxX = grid.dimX();
+                var maxY = grid.dimY();
+                if (mat[x][getNorthY(y, maxY)].getCellType() === END) {
+                    return true;
+                }
+                if (mat[getEastX(x, maxX)][y].getCellType() === END) {
+                    return true;
+                }
+                if (mat[x][getSouthY(y, maxY)].getCellType() === END) {
+                    return true;
+                }
+                if (mat[getWestX(x, maxX)][y].getCellType() === END) {
+                    return true;
+                }
+                return false;
             },
 
             // Standard getter/setter methods
@@ -203,6 +216,23 @@ var MazeCreator = function() {
         };
     };
 
+    var path = function() {
+        var steps = [];
+        var nearEnd = false;
+        return {
+            push: function(cell) {
+                nearEnd = cell.isNearEnd();
+                return steps.push(cell);
+            },
+            length: function() {
+                return steps.length;
+            },
+            isNearEnd: function() {
+                return nearEnd;
+            },
+        };
+    }
+
     // Creates a grid where each cell is instatiated and all the cells are
     // connected but undefined.
     var initGrid = function(x, y) {
@@ -210,7 +240,7 @@ var MazeCreator = function() {
         for (i = 0; i < x; i++) {
             var a = [];
             for (j = 0; j < y; j++) {
-                a[j] = cell(i, j);
+                a[j] = cell(i, j, this);
             }
             mat[i] = a;
         }
@@ -298,7 +328,7 @@ var MazeCreator = function() {
     };
 
     var getNextValidPath = function(currCell, grid, pathLen,
-                                    minSlnLen, allowUsedPaths) {
+                                    minSlnLen) {
         var nextCell;
         var mat = grid.getGrid();
         var x = currCell.getX();
@@ -332,15 +362,12 @@ var MazeCreator = function() {
             } else if (nextCell.getCellType() === END &&
                        pathLen >= minSlnLen) {
                 pathValid = true;
-            } else if (allowUsedPaths) {
-                pathValid = true;
             }
 
             if (g_debugLevel > 3) {
                 print("  " + dirToStr(nextPath) + " cell " +
                       nextCell.getX() + "," + nextCell.getY() +
-                      ": " + pathValid + " - " + nextCell.getCellTypeStr() +
-                      " allowUsedPaths: " + allowUsedPaths);
+                      ": " + pathValid + " - " + nextCell.getCellTypeStr());
             }
 
             if (pathValid) {
@@ -358,7 +385,7 @@ var MazeCreator = function() {
         return pathValid ? [nextPath, nextCell] : [nextPath, null];
     };
 
-    var createPath = function(grid, start, minSlnLen, allowUsedPaths) {
+    var createPath = function(grid, start, minSlnLen) {
         var mat = grid.getGrid();
         var currCell = mat[start[0]][start[1]];
         var pathLen = 0;
@@ -368,7 +395,7 @@ var MazeCreator = function() {
                       currCell.getX()+ "," + currCell.getY());
             }
             var retArray = getNextValidPath(currCell, grid, pathLen,
-                                            minSlnLen, allowUsedPaths);
+                                            minSlnLen);
             dir = retArray[0];
             nextCell = retArray[1];
             if (dir === NOWHERE || nextCell === null) {
@@ -396,7 +423,7 @@ var MazeCreator = function() {
                 break;
             }
         }
-        
+
         return cellValid ? [randX, randY] : null;
     ;}
 
@@ -406,13 +433,14 @@ var MazeCreator = function() {
         var grid;
         var fakePaths = 0;
         var solutionFound = false;
+        var paths = [];
+        var numPaths = 0;
 
         grid = initGrid(g_gridDim[0], g_gridDim[1]);
         setMazeCell(grid, g_mazeStart[0], g_mazeStart[1], START);
         setMazeCell(grid, g_mazeEnd[0], g_mazeEnd[1], END);
-        var allowUsedPaths = false;
         while (!solutionFound) {
-            var res = createPath(grid, g_mazeStart, g_minSlnLen, allowUsedPaths);
+            var res = createPath(grid, g_mazeStart, g_minSlnLen);
             solutionFound = res !== NOWHERE;
             if (!solutionFound) {
                 fakePaths += 1;
@@ -420,20 +448,12 @@ var MazeCreator = function() {
                     if (g_debugLevel > 2) {
                         print("no solution found in " + fakePaths + " tries.");
                     }
-                    allowUsedPaths = true;
                 }
                 if (fakePaths > 100)  {
+                    printGrid(grid);
                     throw "Working too hard...";
                     break;
                 }
-            }
-        }
-
-        for (; fakePaths < g_minFakePaths; fakePaths += 1) {
-            var randomStart = getUnusedCell(grid);
-            if (randomStart != null) {
-                print("Creating path from random start: " + randomStart);
-                createPath(grid, randomStart, g_minSlnLen, false);
             }
         }
 
@@ -449,5 +469,5 @@ var MazeCreator = function() {
     };
 };
 
-var app = MazeCreator();
+var app = MazeCreator(10, 10);
 app.run();
