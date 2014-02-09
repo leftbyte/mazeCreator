@@ -5,18 +5,23 @@
 // Tested using 'V8 version 3.23.15'
 // - - - - - - - - - - - - - - - - - - - - - - -
 
-var MazeApp = function() {
+var MazeCreator = function() {
     var g_debugLevel = 3;
-    var g_gridDim = [10, 10];
-    var g_minSlnLen = 7;
+    var g_gridDim = [15, 15];
     var g_mazeStart = [0, 0];
     var g_mazeEnd = [g_gridDim[0] - 1, g_gridDim[1] - 1];
+    // var g_minFakePaths = Math.floor(Math.sqrt(g_gridDim[0] * g_gridDim[1]));
+    var g_minFakePaths = 10;
+    // The minimum solution length may be violated if the maze has created paths
+    // that have blocked a solution.  See the use of 'allowUsedPaths' in
+    // getNextValidPath.
+    // var g_minSlnLen = Math.floor(Math.sqrt(g_gridDim[0] * g_gridDim[1]));
+    var g_minSlnLen = 5;
 
     var UNDEFINED = 0;
     var START     = 1;
     var PATH      = 2;
     var END       = 3;
-    var ATL       = 4;
 
     var NORTH   = 0;
     var EAST    = 1;
@@ -137,6 +142,9 @@ var MazeApp = function() {
             incrementNeighbor: function() {
                 numNeighbors += 1;
             },
+            getNumNeighbors: function() {
+                return numNeighbors;
+            },
 
             // Standard getter/setter methods
             getX: function() {
@@ -171,6 +179,20 @@ var MazeApp = function() {
             },
             getCellType: function() {
                 return cellType;
+            },
+            getCellTypeStr: function() {
+                switch(cellType) {
+                case UNDEFINED:
+                    return "UNDEFINED";
+                case START:
+                    return "START";
+                case PATH:
+                    return "PATH";
+                case END:
+                    return "END";
+                default:
+                    return "UNKNOWN CELL TYPE";
+                }
             },
             setCellType: function(newType) {
                 if (cellType !== UNDEFINED) {
@@ -275,7 +297,8 @@ var MazeApp = function() {
         return Math.floor((Math.random()*12) / 3);
     };
 
-    var getNextValidPath = function(currCell, grid, pathLen, minSlnLen) {
+    var getNextValidPath = function(currCell, grid, pathLen,
+                                    minSlnLen, allowUsedPaths) {
         var nextCell;
         var mat = grid.getGrid();
         var x = currCell.getX();
@@ -309,12 +332,15 @@ var MazeApp = function() {
             } else if (nextCell.getCellType() === END &&
                        pathLen >= minSlnLen) {
                 pathValid = true;
+            } else if (allowUsedPaths) {
+                pathValid = true;
             }
 
-            if (g_debugLevel > 5) {
+            if (g_debugLevel > 3) {
                 print("  " + dirToStr(nextPath) + " cell " +
                       nextCell.getX() + "," + nextCell.getY() +
-                      ": " + pathValid + " - " + nextCell.getCellType());
+                      ": " + pathValid + " - " + nextCell.getCellTypeStr() +
+                      " allowUsedPaths: " + allowUsedPaths);
             }
 
             if (pathValid) {
@@ -332,16 +358,17 @@ var MazeApp = function() {
         return pathValid ? [nextPath, nextCell] : [nextPath, null];
     };
 
-    var createPath = function(grid, start, minSlnLen) {
+    var createPath = function(grid, start, minSlnLen, allowUsedPaths) {
         var mat = grid.getGrid();
         var currCell = mat[start[0]][start[1]];
         var pathLen = 0;
         while (currCell.getCellType() !== END) {
-            if (g_debugLevel > 5) {
+            if (g_debugLevel > 3) {
                 print("Finding next valid path for: " +
                       currCell.getX()+ "," + currCell.getY());
             }
-            var retArray = getNextValidPath(currCell, grid, pathLen, minSlnLen);
+            var retArray = getNextValidPath(currCell, grid, pathLen,
+                                            minSlnLen, allowUsedPaths);
             dir = retArray[0];
             nextCell = retArray[1];
             if (dir === NOWHERE || nextCell === null) {
@@ -356,9 +383,26 @@ var MazeApp = function() {
         }
     };
 
+    var getUnusedCell = function(grid) {
+        var mat = grid.getGrid();
+        var randX = Math.floor(Math.random() * grid.dimX());
+        var randY = Math.floor(Math.random() * grid.dimY());
+        var cellValid = false;
+        var attempts;
+        var maxAttempts = grid.dimX() * grid.dimY();
+        for (attempts = 0; attempts < maxAttempts; attempts += 1) {
+            if (mat[randX][randY].getCellType() === UNDEFINED) {
+                cellValid = true;
+                break;
+            }
+        }
+        
+        return cellValid ? [randX, randY] : null;
+    ;}
+
     return {
     run: function() {
-        // XXX randomize the start and end
+        // XXX randomize start and end
         var grid;
         var fakePaths = 0;
         var solutionFound = false;
@@ -366,18 +410,36 @@ var MazeApp = function() {
         grid = initGrid(g_gridDim[0], g_gridDim[1]);
         setMazeCell(grid, g_mazeStart[0], g_mazeStart[1], START);
         setMazeCell(grid, g_mazeEnd[0], g_mazeEnd[1], END);
+        var allowUsedPaths = false;
         while (!solutionFound) {
-            solutionFound = createPath(grid, g_mazeStart, g_minSlnLen) !== NOWHERE;
+            var res = createPath(grid, g_mazeStart, g_minSlnLen, allowUsedPaths);
+            solutionFound = res !== NOWHERE;
             if (!solutionFound) {
                 fakePaths += 1;
-                print("solution not found: " + fakePaths);
-                if (fakePaths > 500)  {
+                if (fakePaths > 50)  {
+                    if (g_debugLevel > 2) {
+                        print("no solution found in " + fakePaths + " tries.");
+                    }
+                    allowUsedPaths = true;
+                }
+                if (fakePaths > 100)  {
+                    throw "Working too hard...";
                     break;
                 }
             }
         }
 
-        print("fake paths: " + fakePaths);
+        for (; fakePaths < g_minFakePaths; fakePaths += 1) {
+            var randomStart = getUnusedCell(grid);
+            if (randomStart != null) {
+                print("Creating path from random start: " + randomStart);
+                createPath(grid, randomStart, g_minSlnLen, false);
+            }
+        }
+
+        if (g_debugLevel > 5) {
+            print("non-solution paths: " + fakePaths);
+        }
         printGrid(grid);
 
         if (g_debugLevel > 5) {
@@ -387,5 +449,5 @@ var MazeApp = function() {
     };
 };
 
-var app = MazeApp();
+var app = MazeCreator();
 app.run();
