@@ -497,6 +497,10 @@ var MazeCreator = function(dimX, dimY) {
 
             if (p.length() !== 1) {
                 paths.push(p);
+
+            // If the length of the path created is 1, that means that the start
+            // cell no longer has any valid paths out of that path, so we need
+            // to create a definitive solution.
             } else {
                 if (g_debugLevel > 3) {
                     print("created " + branches + " branches with no solution.");
