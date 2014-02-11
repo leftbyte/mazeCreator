@@ -8,7 +8,6 @@
 var MazeCreator = function(dimX, dimY) {
     var g_debugLevel = 3;
     var g_gridDim = [dimX, dimY];
-    // XXX randomize start and end
     var g_mazeStart = [0, 0];
     var g_mazeEnd = [Math.floor(dimX / 2), Math.floor(dimY / 2)];
     var g_minBranches = Math.floor(Math.sqrt(g_gridDim[0] * g_gridDim[1]));
@@ -67,6 +66,30 @@ var MazeCreator = function(dimX, dimY) {
     };
     var getSouthY = function(y, maxY) {
         return y === maxY - 1 ? 0: y + 1;
+    };
+
+    var getAdjGridCell = function(currCell, grid, dir) {
+        var mat = grid.getGrid();
+        var x = currCell.getX();
+        var y = currCell.getY();
+        var maxX = grid.dimX();
+        var maxY = grid.dimY();
+        var nextCell;
+        switch (dir) {
+        case NORTH:
+            nextCell = mat[x][getNorthY(y, maxY)];
+            break;
+        case EAST:
+            nextCell = mat[getEastX(x, maxX)][y];
+            break;
+        case SOUTH:
+            nextCell = mat[x][getSouthY(y, maxY)];
+            break;
+        case WEST:
+            nextCell = mat[getWestX(x, maxX)][y];
+            break;
+        }
+        return nextCell;
     };
 
     var printGrid = function(grid) {
@@ -272,6 +295,7 @@ var MazeCreator = function(dimX, dimY) {
                 return str;
             },
             getSteps: function() {
+                // This clones the array
                 return steps.slice(0);
             },
             contains: function(c) {
@@ -384,33 +408,11 @@ var MazeCreator = function(dimX, dimY) {
         return Math.floor((Math.random()*12) / 3);
     };
 
-    var getAdjGridCell = function(currCell, grid, dir) {
-        var mat = grid.getGrid();
-        var x = currCell.getX();
-        var y = currCell.getY();
-        var maxX = grid.dimX();
-        var maxY = grid.dimY();
-        var nextCell;
-        switch (dir) {
-        case NORTH:
-            nextCell = mat[x][getNorthY(y, maxY)];
-            break;
-        case EAST:
-            nextCell = mat[getEastX(x, maxX)][y];
-            break;
-        case SOUTH:
-            nextCell = mat[x][getSouthY(y, maxY)];
-            break;
-        case WEST:
-            nextCell = mat[getWestX(x, maxX)][y];
-            break;
-        }
-        return nextCell;
-    };
-
     // Check whether a cell within the paritition contains the END cell.  This
     // is pretty inefficient as it must to check the continually growing list of
     // checked cells each time.
+    //
+    // XXX: We should use some type of cell coloring to improve efficiency.
     var partitionContainsEnd = function(nextCell, grid) {
         var checkedCells = path();
         var pathsToCheck = path();
@@ -419,6 +421,7 @@ var MazeCreator = function(dimX, dimY) {
         if (nextCell.getCellType() === END) {
             return true;
         }
+        // REFACTOR
         for (var nextDir = 0; nextDir < 4; nextDir += 1) {
             var c = getAdjGridCell(nextCell, grid, nextDir % 4);
             if (c.getCellType() === UNDEFINED) {
@@ -438,6 +441,7 @@ var MazeCreator = function(dimX, dimY) {
         while (pathsToCheck.length() !== 0) {
             var nextPath = pathsToCheck.pop();
 
+            // REFACTOR, repeated code with above.
             for (var nextDir = 0; nextDir < 4; nextDir += 1) {
                 var c = getAdjGridCell(nextPath, grid, nextDir % 4);
                 if (c.getCellType() === UNDEFINED) {
@@ -462,7 +466,7 @@ var MazeCreator = function(dimX, dimY) {
     }
 
     var getNextValidPath = function(currCell, grid, pathLen,
-                                    minSlnLen, currPath, allowAnyPath) {
+                                    minSlnLen, currPath, findEnd) {
         var nextCell;
         var nextPath = getRandomPath();
         var pathValid = false;
@@ -478,15 +482,12 @@ var MazeCreator = function(dimX, dimY) {
             } else if (nextCell.getCellType() === END &&
                        pathLen >= minSlnLen) {
                 pathValid = true;
-            } else if (allowAnyPath &&
-                       (nextCell.getCellType() === START ||
-                        nextCell.getCellType() === PATH)) {
-                pathValid = true;
             }
 
             // If we've already seen this cell in our currPath, or the path
             // can't lead to the END, it's invalid.
-            if (pathValid && (currPath.contains(nextCell) ||
+            if (findEnd &&
+                pathValid && (currPath.contains(nextCell) ||
                               !partitionContainsEnd(nextCell, grid))) {
                 if (g_debugLevel > 3) {
                     print(currPath.toString());
@@ -523,13 +524,17 @@ var MazeCreator = function(dimX, dimY) {
     // Create a path through the maze, beginning from the 'start' cell and
     // ending when the cell type is one of the stop conditions.  If an existing
     // trail is provided, that path will be augmented.
+    //
+    // XXX: The randomness makes _really_ difficult mazes, which is kinda cool.
+    // It would be interesting to be able to set a level of difficulty.
     var createPath = function(grid, startCell, stopConditions,
-                              minSlnLen, allowAnyPath, existingPath) {
+                              minSlnLen, findEnd, existingPath) {
         var mat = grid.getGrid();
         var currCell = startCell;
         var pathLen = 0;
         var stopConditionReached = false;
         var p;
+
         if (existingPath === null) {
             p = path();
         } else {
@@ -542,7 +547,7 @@ var MazeCreator = function(dimX, dimY) {
                       currCell.getX()+ "," + currCell.getY());
             }
             var retArray = getNextValidPath(currCell, grid, pathLen,
-                                            minSlnLen, p, allowAnyPath);
+                                            minSlnLen, p, findEnd);
             dir = retArray[0];
             nextCell = retArray[1];
             if (dir === NOWHERE || nextCell === null) {
@@ -565,7 +570,11 @@ var MazeCreator = function(dimX, dimY) {
     };
 
     var createFakePaths = function(grid, currPath) {
+        // XXX We should get a measure of "sparseness"
+        // of the grid to see if we need to iterate
+        // over the fake paths to add more trails.
         var paths = [];
+
         var steps = currPath.getSteps();
         for (var s = 0; s < steps.length; s++) {
             var c = steps[s];
@@ -582,8 +591,6 @@ var MazeCreator = function(dimX, dimY) {
                 if (c.getCell(nextDir % 4) === undefined &&
                     nextCell.getCellType() === UNDEFINED) {
                     setMazeCell(grid, c, PATH, nextDir % 4, nextCell);
-                    // XXX we should have createPath take a cell as input for
-                    // the start.
                     var p = createPath(grid, nextCell, [END], 5, false, null);
                     paths.push(p);
                 }
@@ -615,10 +622,12 @@ var MazeCreator = function(dimX, dimY) {
               " end: " + g_mazeEnd[0] + "," + g_mazeEnd[1]);
 
         slnPath = createPath(grid, startCell, [END],
-                             g_minSlnLen, false, null);
+                             g_minSlnLen, true, null);
+        print("maze solution: ");
         printGrid(grid);
         createFakePaths(grid, slnPath);
 
+        print("maze with diversions: ");
         printGrid(grid);
 
         if (g_debugLevel > 7) {
@@ -628,5 +637,5 @@ var MazeCreator = function(dimX, dimY) {
     };
 };
 
-var app = MazeCreator(20, 20);
+var app = MazeCreator(25, 25);
 app.run();
