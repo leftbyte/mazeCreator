@@ -399,6 +399,9 @@ var MazeCreator = function(dimX, dimY) {
         return nextCell;
     };
 
+    // Check whether a cell within the paritition contains the END cell.  This
+    // is pretty inefficient as it must to check the continually growing list of
+    // checked cells each time.
     var partitionContainsEnd = function(nextCell, grid) {
         var checkedCells = path();
         var pathsToCheck = path();
@@ -558,43 +561,18 @@ var MazeCreator = function(dimX, dimY) {
     return {
     run: function() {
         var grid;
-        var solutionFound = false;
         var paths = [];
 
         grid = initGrid(g_gridDim[0], g_gridDim[1]);
         setMazeCell(grid, g_mazeStart[0], g_mazeStart[1], START);
         setMazeCell(grid, g_mazeEnd[0], g_mazeEnd[1], END);
+
         print("maze start: " + g_mazeStart[0] + "," + g_mazeStart[1] +
               " end: " + g_mazeEnd[0] + "," + g_mazeEnd[1]);
 
-        while (!solutionFound) {
-            var p = createPath(grid, g_mazeStart, [END],
-                               g_minSlnLen, false, null);
-            solutionFound = p.hasSolution();
-            if (solutionFound) {
-                break;
-            }
-
-            printGrid(grid);
-            throw "fail";
-
-            if (p.length() !== 1) {
-                paths.push(p);
-
-            // If the length of the path created is 1, that means that the start
-            // cell no longer has any valid paths out of that path, so we need
-            // to create a definitive solution.
-            } else {
-                if (g_debugLevel > 3) {
-                    print("created " + branches + " branches with no solution.");
-                    printGrid(grid);
-                }
-                // XXX There is a possibility that this fails...
-                createPath(grid, g_mazeEnd, [PATH, START], 0, true, p);
-                solutionFound = true;
-            }
-        }
-
+        var p = createPath(grid, g_mazeStart, [END],
+                           g_minSlnLen, false, null);
+        paths.push(p);
         printGrid(grid);
 
         if (g_debugLevel > 7) {
