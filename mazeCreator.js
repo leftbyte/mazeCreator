@@ -40,6 +40,19 @@ var MazeCreator = function(dimX, dimY) {
         }
     };
 
+    var typeToStr = function(t) {
+        switch (t) {
+        case UNDEFINED:
+            return "UNDEFINED";
+        case START:
+            return "START";
+        case END:
+            return "END";
+        case PATH:
+            return "PATH";
+        }
+    };
+
     // The way this grid outputs, 0,0 is on the top left and x,x is on the
     // bottom right, so going "North" decrements the index.
     var getEastX = function(x, maxX) {
@@ -139,7 +152,7 @@ var MazeCreator = function(dimX, dimY) {
         var numNeighbors = 0;
         return {
             toString: function() {
-                return "" + x + "," + y;
+                return "" + x + "," + y + " " + typeToStr(cellType);
             },
             incrementNeighbor: function() {
                 numNeighbors += 1;
@@ -234,6 +247,9 @@ var MazeCreator = function(dimX, dimY) {
                 }
                 return steps.push(c);
             },
+            pop: function() {
+                return steps.pop();
+            },
             length: function() {
                 return steps.length;
             },
@@ -299,7 +315,6 @@ var MazeCreator = function(dimX, dimY) {
 
     // Set the maze cell type and direction. If dir is not specified then we
     // simply set the type and return undefined.
-
     var setMazeCell = function(grid, x, y, type, dir, nextCell) {
         incrCellNeighbors(grid, x, y);
 
@@ -323,6 +338,7 @@ var MazeCreator = function(dimX, dimY) {
             }
             thisCell.setNorthCell(nextCell);
             nextCell.setSouthCell(thisCell);
+            nextCell.setCellType(type);
             break;
         case EAST:
             if (g_debugLevel > 5) {
@@ -331,6 +347,7 @@ var MazeCreator = function(dimX, dimY) {
             }
             thisCell.setEastCell(nextCell);
             nextCell.setWestCell(thisCell);
+            nextCell.setCellType(type);
             break;
         case SOUTH:
             if (g_debugLevel > 5) {
@@ -339,6 +356,7 @@ var MazeCreator = function(dimX, dimY) {
             }
             thisCell.setSouthCell(nextCell);
             nextCell.setNorthCell(thisCell);
+            nextCell.setCellType(type);
             break;
         case WEST:
             if (g_debugLevel > 5) {
@@ -347,6 +365,7 @@ var MazeCreator = function(dimX, dimY) {
             }
             thisCell.setWestCell(nextCell);
             nextCell.setEastCell(thisCell);
+            nextCell.setCellType(type);
             break;
         }
         return;
@@ -380,14 +399,65 @@ var MazeCreator = function(dimX, dimY) {
         return nextCell;
     };
 
+    var partitionContainsEnd = function(nextCell, grid) {
+        var checkedCells = path();
+        var pathsToCheck = path();
+
+        // prime the loop
+        for (var nextDir = 0; nextDir < 4; nextDir += 1) {
+            var c = getAdjGridCell(nextCell, grid, nextDir % 4);
+            if (c.getCellType() === UNDEFINED) {
+                if (g_debugLevel > 6) {
+                    print("  adding " + c.toString() + " to paths to check");
+                }
+                pathsToCheck.push(c);
+            } else if (c.getCellType() === END) {
+                if (g_debugLevel > 6) {
+                    print("found " + c.toString());
+                }
+                return true;
+            }
+            checkedCells.push(c);
+        }
+
+        while (pathsToCheck.length() !== 0) {
+            var nextPath = pathsToCheck.pop();
+
+            for (var nextDir = 0; nextDir < 4; nextDir += 1) {
+                var c = getAdjGridCell(nextPath, grid, nextDir % 4);
+                if (c.getCellType() === UNDEFINED) {
+                    if (!pathsToCheck.contains(c) &&
+                        !checkedCells.contains(c)) {
+                        if (g_debugLevel > 6) {
+                            print("adding " + c.toString() + " to paths to check");
+                        }
+                        pathsToCheck.push(c);
+                    }
+                } else if (c.getCellType() === END) {
+                    if (g_debugLevel > 6) {
+                        print("found " + c.toString());
+                    }
+                    return true;
+                }
+                checkedCells.push(c);
+            }
+        }
+
+        return false;
+    }
+
     var getNextValidPath = function(currCell, grid, pathLen,
-                                    minSlnLen, trail, allowAnyPath) {
+                                    minSlnLen, currPath, allowAnyPath) {
         var nextCell;
         var nextPath = getRandomPath();
         var pathValid = false;
         var tries = 0;
         while (!pathValid) {
             nextCell = getAdjGridCell(currCell, grid, nextPath);
+            if (g_debugLevel > 6) {
+                print("    next path, " + dirToStr(nextPath) +
+                      " nextCell to check " + nextCell.toString());
+            }
             if (nextCell.getCellType() === UNDEFINED) {
                 pathValid = true;
             } else if (nextCell.getCellType() === END &&
@@ -399,9 +469,12 @@ var MazeCreator = function(dimX, dimY) {
                 pathValid = true;
             }
 
-            // If we've already seen this cell in our trail, it's not valid.
-            if (trail.contains(nextCell)) {
+            // If we've already seen this cell in our currPath, or the path
+            // can't lead to the END, it's invalid.
+            if (pathValid && (currPath.contains(nextCell) ||
+                              !partitionContainsEnd(nextCell, grid))) {
                 if (g_debugLevel > 3) {
+                    print(currPath.toString());
                     print("  " + dirToStr(nextPath) + " cell " +
                           nextCell.getX() + "," + nextCell.getY() +
                           " is invalid");
@@ -419,11 +492,13 @@ var MazeCreator = function(dimX, dimY) {
                 break;
             }
 
-            tries += 1;
             if (tries > 3) {
                 nextPath = NOWHERE;
+                printGrid(grid);
+                throw "fail 1"
                 break;
             }
+            tries += 1;
             nextPath = (nextPath + 1) % 4; // clock-wise shift
         }
 
@@ -434,28 +509,21 @@ var MazeCreator = function(dimX, dimY) {
     // ending when the cell type is one of the stop conditions.  If an existing
     // trail is provided, that path will be augmented.
     var createPath = function(grid, start, stopConditions,
-                              minSlnLen, allowAnyPath, existingTrail) {
+                              minSlnLen, allowAnyPath, existingPath) {
         var mat = grid.getGrid();
         var currCell = mat[start[0]][start[1]];
         var pathLen = 0;
         var stopConditionReached = false;
         var p;
-        if (existingTrail === null) {
+        if (existingPath === null) {
             p = path();
         } else {
-            p = existingTrail;
+            p = existingPath;
         }
         p.push(currCell);
         while (!stopConditionReached) {
-            for (var c = 0; c < stopConditions.length; c += 1) {
-                if (currCell.getCellType() === stopConditions[c]) {
-                    stopConditionReached = true;
-                    break;
-                }
-            }
-
             if (g_debugLevel > 3) {
-                print("Finding next valid path for: " +
+                print("  finding next valid path for: " +
                       currCell.getX()+ "," + currCell.getY());
             }
             var retArray = getNextValidPath(currCell, grid, pathLen,
@@ -471,10 +539,22 @@ var MazeCreator = function(dimX, dimY) {
             currCell = nextCell;
             p.push(currCell);
             pathLen += 1;
+
+            for (var c = 0; c < stopConditions.length; c += 1) {
+                if (currCell.getCellType() === stopConditions[c]) {
+                    stopConditionReached = true;
+                    break;
+                }
+            }
         }
         return p;
     };
 
+    // run(): run is the main function for the MazeCreator program.  It
+    // initializes the grid then creates paths.  We first create paths until the
+    // start cell or end cell have no free adjacent cells.  At that point we
+    // force a solution.  We then run a couple of "fake" paths to make the maze
+    // more interesting.
     return {
     run: function() {
         var grid;
@@ -495,6 +575,9 @@ var MazeCreator = function(dimX, dimY) {
                 break;
             }
 
+            printGrid(grid);
+            throw "fail";
+
             if (p.length() !== 1) {
                 paths.push(p);
 
@@ -506,6 +589,7 @@ var MazeCreator = function(dimX, dimY) {
                     print("created " + branches + " branches with no solution.");
                     printGrid(grid);
                 }
+                // XXX There is a possibility that this fails...
                 createPath(grid, g_mazeEnd, [PATH, START], 0, true, p);
                 solutionFound = true;
             }
@@ -520,5 +604,5 @@ var MazeCreator = function(dimX, dimY) {
     };
 };
 
-var app = MazeCreator(15, 15);
+var app = MazeCreator(20, 20);
 app.run();
