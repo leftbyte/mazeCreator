@@ -1,17 +1,39 @@
 mazeCreator
 ===========
 
-Maze creator in javascript.
+Maze creator in javascript.  Tested with node version v0.10.25.  Outputs to the
+console in ASCII text...
 
 To run:
   > node mazeCreator.js
 
-Tested with node version v0.10.25.
+maze start: 0,0 (top left)
+       end: 12,12 cell marked by '( )'
 
-You can change the size of the maze by changing the arguments passed to
-MazeCreator (see EOF mazeCreator.js).
-
-E.g.
-  MazeCreator(25, 25); # creates a maze of size 25 x 25
-  MazeCreator(100, 100); # creates a maze of size 100 x 100
-
+maze with first order diversions:
+   _ _     _ _ _     _   _ _ _ _ _ _     _ _
+ _ _ _ _| |  _  |_|_ _ _   _ _  | |   |_|  _ _| |_
+|   |  _ _| | | |  _ _ _ _|   |_ _| |   |_|   |_  |
+| | | |   |_  |_ _|  _ _ _ _|_|  _ _| | |  _| |  _|
+| |_ _| |_  | |  _ _|  _ _ _|  _|_|_| | | |  _|_  |
+ _|  _ _| |  _| |   |_  |  _ _|_ _  | |_ _|_    |_
+|  _|  _ _|_|  _| |_  | | |  _  |  _|_ _ _  |_|_  |
+   _ _|_|   |_  | |_|_ _| | |  _|_  |_|_|_|_  | |_
+| |  _ _ _|_  | | |_|_|  _| | |  _ _|_|_|_|_| |_  |
+|_ _|   |  _|_ _|_  |_|_  | | | |   |   |   |_  | |
+| |  _|   |  _ _  | |_|  _| |_  |_|_ _| | | |_| | |
+| | | | | |_ _  |_ _|  _|  _|_ _ _ _  | | | |  _| |
+| |_ _| |_ _  | |  _ _|  _| |    _  | |_ _| |_ _ _|
+   _  | |  _|_  |_ _ _|_ _)_ _| |  _|_ _  | |_|_|
+|_  |_ _|_  |_ _ _ _ _  |_ _   _|_  | |  _|_ _ _ _|
+ _ _|  _ _|_ _ _   _  | |  _ _|_  |_  |_ _ _ _ _ _
+  | |_ _ _  |    _| | |_ _|_   _ _  |_  |   |_   _
+ _|_ _    | | | |   | |    _ _|   |  _| | |_ _ _|
+ _ _ _ _| |_ _| | | | |_|_  |  _| | |  _|_  |   |_
+ _ _  | |_ _  | | | |_ _  | | | | | | |  _ _| |_ _
+    |_ _ _  |_ _| |_ _  |_ _| | |_ _| | |  _ _|_ _
+ _|_ _  | |_ _ _ _|   |_ _  | |  _  |_ _| |   |  _
+|   |_ _  |_ _   _  |_|   | |_ _|  _|_   _| |_  | |
+ _|_  | |_ _ _ _|  _|  _|_ _ _|  _|_   _|   |_ _|_
+  |  _|_   _   _| |  _ _|  _ _ _|_   _|_  | |  _ _
+| |_ _  |  _|_ _  | |_  |_ _ _ _ _ _|    _|_| |   |
