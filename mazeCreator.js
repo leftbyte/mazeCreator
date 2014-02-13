@@ -2,10 +2,16 @@
 // maze.js - example maze creator in javascript.
 // Author: Dan Phung
 //
-// Tested using 'V8 version 3.23.15'
+// Tested using 'node version v0.10.25'
 // - - - - - - - - - - - - - - - - - - - - - - -
 
+// Maze creator prototype that encapsulates a grid with cells, each made up of a
+// set of north, east, south, or/and west walls.  The main function is run().
 var MazeCreator = function(dimX, dimY) {
+    // For node, use console.log, v8 = print
+    outputfn = console.log;
+
+    // Maze globals
     var g_debugLevel = 3;
     var g_gridDim = [dimX, dimY];
     var g_mazeStart = [0, 0];
@@ -92,6 +98,7 @@ var MazeCreator = function(dimX, dimY) {
         return nextCell;
     };
 
+    // print the maze grid with the undefined directions set as the walls.
     var printGrid = function(grid) {
         var i, j;
         var mat = grid.getGrid();
@@ -110,7 +117,7 @@ var MazeCreator = function(dimX, dimY) {
                 topStr += " ";
             }
         }
-        print(topStr);
+        outputfn(topStr);
 
         for (j = 0; j < grid.dimY(); j += 1) {
             var str = "";
@@ -142,29 +149,32 @@ var MazeCreator = function(dimX, dimY) {
             } else {
                 str += " ";
             }
-            print(str);
+            outputfn(str);
         }
-        print("");
+        outputfn("");
     };
 
+    // Debugging function to dump the cells
     var dumpGrid = function(grid) {
         var i, j;
         var mat = grid.getGrid();
 
-        print("Dumping grid data");
+        outputfn("Dumping grid data");
         for (j = 0; j < grid.dimY(); j += 1) {
             // Next print out the east, south and west lines.
             var c
             for (i = 0; i < grid.dimX(); i += 1) {
                 c = mat[i][j];
-                print(c.getX() + "," + c.getY() + " north: " + c.getCell(NORTH));
-                print(c.getX() + "," + c.getY() + " east: " + c.getCell(EAST));
-                print(c.getX() + "," + c.getY() + " south: " + c.getCell(SOUTH));
-                print(c.getX() + "," + c.getY() + " west: " + c.getCell(WEST));
+
+                outputfn(c.getX() + "," + c.getY() + " north: " + c.getCell(NORTH));
+                outputfn(c.getX() + "," + c.getY() + " east: " + c.getCell(EAST));
+                outputfn(c.getX() + "," + c.getY() + " south: " + c.getCell(SOUTH));
+                outputfn(c.getX() + "," + c.getY() + " west: " + c.getCell(WEST));
             }
         }
     };
 
+    // The cell object represents the operations done on a block in the maze.
     var cell = function(x, y, grid) {
         var north;
         var east;
@@ -265,6 +275,8 @@ var MazeCreator = function(dimX, dimY) {
         };
     };
 
+    // A path is a set of ordered cells representing a walk through the maze,
+    // which may or may not end in the END cell.
     var path = function() {
         var steps = [];
         var hasSolution = false;
@@ -335,7 +347,10 @@ var MazeCreator = function(dimX, dimY) {
         };
     };
 
-    var incrCellNeighbors = function(grid, x, y) {
+    // Increments the neighbors count of each neighbor of this cell.
+    var incrCellNeighbors = function(grid, thisCell) {
+        var x = thisCell.getX();
+        var y = thisCell.getY();
         var maxX = grid.dimX();
         var maxY = grid.dimY();
         var mat = grid.getGrid();
@@ -348,9 +363,7 @@ var MazeCreator = function(dimX, dimY) {
     // Set the maze cell type and direction. If dir is not specified then we
     // simply set the type and return undefined.
     var setMazeCell = function(grid, thisCell, type, dir, nextCell) {
-        var x = thisCell.getX();
-        var y = thisCell.getY();
-        incrCellNeighbors(grid, x, y);
+        incrCellNeighbors(grid, thisCell);
 
         var mat = grid.getGrid();
         if (type !== undefined) {
@@ -366,8 +379,8 @@ var MazeCreator = function(dimX, dimY) {
         switch (dir) {
         case NORTH:
             if (g_debugLevel > 5) {
-                print("  set north: " + thisCell.getX() + "," + thisCell.getY());
-                print("  set south: " + nextCell.getX() + "," + nextCell.getY());
+                outputfn("  set north: " + thisCell.getX() + "," + thisCell.getY());
+                outputfn("  set south: " + nextCell.getX() + "," + nextCell.getY());
             }
             thisCell.setCell(NORTH, nextCell);
             nextCell.setCell(SOUTH, thisCell);
@@ -375,8 +388,8 @@ var MazeCreator = function(dimX, dimY) {
             break;
         case EAST:
             if (g_debugLevel > 5) {
-                print("  set east: " + thisCell.getX() + "," + thisCell.getY());
-                print("  set west: " + nextCell.getX() + "," + nextCell.getY());
+                outputfn("  set east: " + thisCell.getX() + "," + thisCell.getY());
+                outputfn("  set west: " + nextCell.getX() + "," + nextCell.getY());
             }
             thisCell.setCell(EAST, nextCell);
             nextCell.setCell(WEST, thisCell);
@@ -384,8 +397,8 @@ var MazeCreator = function(dimX, dimY) {
             break;
         case SOUTH:
             if (g_debugLevel > 5) {
-                print("  set south: " + thisCell.getX() + "," + thisCell.getY());
-                print("  set north: " + nextCell.getX() + "," + nextCell.getY());
+                outputfn("  set south: " + thisCell.getX() + "," + thisCell.getY());
+                outputfn("  set north: " + nextCell.getX() + "," + nextCell.getY());
             }
             thisCell.setCell(SOUTH, nextCell);
             nextCell.setCell(NORTH, thisCell);
@@ -393,8 +406,8 @@ var MazeCreator = function(dimX, dimY) {
             break;
         case WEST:
             if (g_debugLevel > 5) {
-                print("  set west: " + thisCell.getX() + "," + thisCell.getY());
-                print("  set east: " + nextCell.getX() + "," + nextCell.getY());
+                outputfn("  set west: " + thisCell.getX() + "," + thisCell.getY());
+                outputfn("  set east: " + nextCell.getX() + "," + nextCell.getY());
             }
             thisCell.setCell(WEST, nextCell);
             nextCell.setCell(EAST, thisCell);
@@ -408,11 +421,11 @@ var MazeCreator = function(dimX, dimY) {
         return Math.floor((Math.random()*12) / 3);
     };
 
-    // Check whether a cell within the paritition contains the END cell.  This
-    // is pretty inefficient as it must to check the continually growing list of
-    // checked cells each time.
+    // Check whether a cell within the paritition contains the END cell.
     //
-    // XXX: We should use some type of cell coloring to improve efficiency.
+    // XXX: This is pretty inefficient as it must to check the continually
+    // growing list of checked cells each time.  We should use some type of cell
+    // coloring algorithm to improve efficiency.
     var partitionContainsEnd = function(nextCell, grid) {
         var checkedCells = path();
         var pathsToCheck = path();
@@ -426,12 +439,12 @@ var MazeCreator = function(dimX, dimY) {
             var c = getAdjGridCell(nextCell, grid, nextDir % 4);
             if (c.getCellType() === UNDEFINED) {
                 if (g_debugLevel > 6) {
-                    print("  adding " + c.toString() + " to paths to check");
+                    outputfn("  adding " + c.toString() + " to paths to check");
                 }
                 pathsToCheck.push(c);
             } else if (c.getCellType() === END) {
                 if (g_debugLevel > 6) {
-                    print("found " + c.toString());
+                    outputfn("found " + c.toString());
                 }
                 return true;
             }
@@ -448,13 +461,13 @@ var MazeCreator = function(dimX, dimY) {
                     if (!pathsToCheck.contains(c) &&
                         !checkedCells.contains(c)) {
                         if (g_debugLevel > 6) {
-                            print("adding " + c.toString() + " to paths to check");
+                            outputfn("adding " + c.toString() + " to paths to check");
                         }
                         pathsToCheck.push(c);
                     }
                 } else if (c.getCellType() === END) {
                     if (g_debugLevel > 6) {
-                        print("found " + c.toString());
+                        outputfn("found " + c.toString());
                     }
                     return true;
                 }
@@ -465,6 +478,8 @@ var MazeCreator = function(dimX, dimY) {
         return false;
     }
 
+    // Returns the next valid path (direction, cell) allowed from the current
+    // cell.
     var getNextValidPath = function(currCell, grid, pathLen,
                                     minSlnLen, currPath, findEnd) {
         var nextCell;
@@ -474,7 +489,7 @@ var MazeCreator = function(dimX, dimY) {
         while (!pathValid) {
             nextCell = getAdjGridCell(currCell, grid, nextPath);
             if (g_debugLevel > 5) {
-                print("    next path, " + dirToStr(nextPath) +
+                outputfn("    next path, " + dirToStr(nextPath) +
                       " nextCell to check " + nextCell.toString());
             }
             if (nextCell.getCellType() === UNDEFINED) {
@@ -490,8 +505,8 @@ var MazeCreator = function(dimX, dimY) {
                 pathValid && (currPath.contains(nextCell) ||
                               !partitionContainsEnd(nextCell, grid))) {
                 if (g_debugLevel > 3) {
-                    print(currPath.toString());
-                    print("  " + dirToStr(nextPath) + " cell " +
+                    outputfn(currPath.toString());
+                    outputfn("  " + dirToStr(nextPath) + " cell " +
                           nextCell.getX() + "," + nextCell.getY() +
                           " is invalid");
                 }
@@ -499,7 +514,7 @@ var MazeCreator = function(dimX, dimY) {
             }
 
             if (g_debugLevel > 3) {
-                print("  " + dirToStr(nextPath) + " cell " +
+                outputfn("  " + dirToStr(nextPath) + " cell " +
                       nextCell.getX() + "," + nextCell.getY() +
                       ": " + pathValid + " - " + nextCell.getCellTypeStr());
             }
@@ -510,7 +525,7 @@ var MazeCreator = function(dimX, dimY) {
 
             if (tries > 3) {
                 nextPath = NOWHERE;
-                // printGrid(grid);
+                // outputfnGrid(grid);
                 // throw "failed to find a path";
                 break;
             }
@@ -543,7 +558,7 @@ var MazeCreator = function(dimX, dimY) {
         p.push(currCell);
         while (!stopConditionReached) {
             if (g_debugLevel > 3) {
-                print("  finding next valid path for: " +
+                outputfn("  finding next valid path for: " +
                       currCell.getX()+ "," + currCell.getY());
             }
             var retArray = getNextValidPath(currCell, grid, pathLen,
@@ -569,13 +584,15 @@ var MazeCreator = function(dimX, dimY) {
         return p;
     };
 
-    var createFakePaths = function(grid, currPath) {
+    // Create an alternative set of paths divergent from the given solution
+    // path.
+    var createFakePaths = function(grid, slnPath) {
         // XXX We should get a measure of "sparseness"
         // of the grid to see if we need to iterate
         // over the fake paths to add more trails.
         var paths = [];
 
-        var steps = currPath.getSteps();
+        var steps = slnPath.getSteps();
         for (var s = 0; s < steps.length; s++) {
             var c = steps[s];
             if (c.getCellType() === END) {
@@ -596,6 +613,7 @@ var MazeCreator = function(dimX, dimY) {
                 }
             }
         }
+        return paths;
     };
 
     // run(): run is the main function for the MazeCreator program.  It
@@ -609,6 +627,7 @@ var MazeCreator = function(dimX, dimY) {
         var slnPath;
         var mat;
         var startCell, endCell;
+        var fakePaths;
 
         grid = initGrid(g_gridDim[0], g_gridDim[1]);
         mat = grid.getGrid();
@@ -618,16 +637,21 @@ var MazeCreator = function(dimX, dimY) {
         setMazeCell(grid, startCell, START);
         setMazeCell(grid, endCell, END);
 
-        print("maze start: " + g_mazeStart[0] + "," + g_mazeStart[1] +
+        outputfn("maze start: " + g_mazeStart[0] + "," + g_mazeStart[1] +
               " end: " + g_mazeEnd[0] + "," + g_mazeEnd[1]);
 
         slnPath = createPath(grid, startCell, [END],
                              g_minSlnLen, true, null);
-        print("maze solution: ");
-        printGrid(grid);
-        createFakePaths(grid, slnPath);
 
-        print("maze with diversions: ");
+        outputfn("maze solution: find the cell marked by '( )'");
+
+        // XXX Instead of "printing" these paths to the console, we can return
+        // them to be processed in the render request.
+
+        printGrid(grid);
+        fakePaths = createFakePaths(grid, slnPath);
+
+        outputfn("maze with first order diversions:");
         printGrid(grid);
 
         if (g_debugLevel > 7) {
