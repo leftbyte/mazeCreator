@@ -637,13 +637,13 @@ var MazeCreator = function(dimX, dimY) {
         setMazeCell(grid, startCell, START);
         setMazeCell(grid, endCell, END);
 
-        outputfn("maze start: " + g_mazeStart[0] + "," + g_mazeStart[1] +
-              " end: " + g_mazeEnd[0] + "," + g_mazeEnd[1]);
+        outputfn("maze start: " + g_mazeStart[0] + "," + g_mazeStart[1] + " (top left)");
+        outputfn("       end: " + g_mazeEnd[0] + "," + g_mazeEnd[1] + " cell marked by '( )'");
 
         slnPath = createPath(grid, startCell, [END],
                              g_minSlnLen, true, null);
 
-        outputfn("maze solution: find the cell marked by '( )'");
+        outputfn("maze solution:");
 
         // XXX Instead of "printing" these paths to the console, we can return
         // them to be processed in the render request.
