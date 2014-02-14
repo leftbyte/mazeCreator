@@ -310,6 +310,13 @@ var MazeCreator = function(dimX, dimY) {
                 // This clones the array
                 return steps.slice(0);
             },
+            getElement: function(index) {
+                if (index < 0 || index >= steps.length) {
+                    return undefined;
+                }
+
+                return steps[index];
+            },
             contains: function(c) {
                 for (var i = 0; i < steps.length; i += 1) {
                     if (c.getX() == steps[i].getX() &&
@@ -478,6 +485,71 @@ var MazeCreator = function(dimX, dimY) {
         return false;
     }
 
+    // Check if the front or two sides creates a wall defining a new partition.
+    var checkPathDirection = function(currCell, prevCell, grid, dir) {
+        if (currCell.getCell(dir) === prevCell) {
+            var oppositeDir = (dir + 2) % 4;
+            var side1Dir = (oppositeDir + 3) % 4;
+            var side2Dir = (oppositeDir + 1) % 4;
+
+            var frontCell = getAdjGridCell(currCell, grid, oppositeDir);
+            var sideCell1 = getAdjGridCell(frontCell, grid, side1Dir);
+            var sideCell2 = getAdjGridCell(frontCell, grid, side2Dir);
+
+            if (frontCell.getCellType() !== UNDEFINED ||
+                sideCell1.getCellType() !== UNDEFINED ||
+                sideCell2.getCellType() !== UNDEFINED) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    // Returns true if the cell could create a new partition, which can only
+    // happen if the current cell's direction heads into a defined set of cells.
+    // E.g. In this path, cell 2, which was preceeded by cell 1 will create a
+    // partition since the direction it's heading will close off a portion of
+    // the maze.  The directionality of the check means that we don't have to
+    // check the entire perimeter of cell 2.  E.g. Cell 3 doesn't create a new
+    // partition.  This gives us a 2x performance increase in maze creation
+    // time.
+    //  _ _ _ _ _ _ _
+    // |_   _ _  |_|_|
+    // |_| |_|_| |_|_|
+    // |3|_|_|_| |_|_|
+    // |2|_|_|_| |_|_|
+    // |1|_|_|_| |_|_|
+    // |_ _ _ _ _|_|_|
+    // |_|_|_|_|_|_|_|
+
+    var cellCreatesPartition = function(currCell, currPath, grid) {
+        // The least amount of steps needed to create an enclosed parition is
+        // 8 steps:
+        //  _ _ _ _ _ _ _
+        // |_ _  |_|_|_|_|
+        // | |_| |_|_|_|_|
+        // |_ _ _|_|_|_|_|
+        // |_|_|_|_|_|_|_|
+        // |_|_|_|_|_|_|_|
+        // |_|_|_|_|_|_|_|
+        // |_|_|_|_|_|_|_|
+
+        if (currPath.length() < 8) {
+            return false;
+        }
+
+        prevCell = currPath.getElement(currPath.length - 2);
+
+        if (checkPathDirection(currCell, prevCell, grid, NORTH) ||
+            checkPathDirection(currCell, prevCell, grid, EAST)  ||
+            checkPathDirection(currCell, prevCell, grid, SOUTH) ||
+            checkPathDirection(currCell, prevCell, grid, WEST)) {
+            return true;
+        }
+        return false;
+    };
+
     // Returns the next valid path (direction, cell) allowed from the current
     // cell.
     var getNextValidPath = function(currCell, grid, pathLen,
@@ -501,9 +573,10 @@ var MazeCreator = function(dimX, dimY) {
 
             // If we've already seen this cell in our currPath, or the path
             // can't lead to the END, it's invalid.
-            if (findEnd &&
-                pathValid && (currPath.contains(nextCell) ||
-                              !partitionContainsEnd(nextCell, grid))) {
+            if (findEnd && pathValid &&
+                (currPath.contains(nextCell) ||
+                 (cellCreatesPartition(currCell, currPath, grid) &&
+                  !partitionContainsEnd(nextCell, grid)))) {
                 if (g_debugLevel > 3) {
                     outputfn(currPath.toString());
                     outputfn("  " + dirToStr(nextPath) + " cell " +
@@ -525,8 +598,10 @@ var MazeCreator = function(dimX, dimY) {
 
             if (tries > 3) {
                 nextPath = NOWHERE;
-                // outputfnGrid(grid);
-                // throw "failed to find a path";
+                if (findEnd) {
+                    printGrid(grid);
+                    throw "failed to find a path";
+                }
                 break;
             }
             tries += 1;
@@ -661,5 +736,5 @@ var MazeCreator = function(dimX, dimY) {
     };
 };
 
-var app = MazeCreator(25, 25);
+var app = MazeCreator(30, 30);
 app.run();
