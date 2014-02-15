@@ -318,13 +318,7 @@ var MazeCreator = function(dimX, dimY) {
                 return steps[index];
             },
             contains: function(c) {
-                for (var i = 0; i < steps.length; i += 1) {
-                    if (c.getX() == steps[i].getX() &&
-                        c.getY() == steps[i].getY()) {
-                        return true;
-                    }
-                }
-                return false;
+                return steps.indexOf(c) !== -1;
             },
         };
     }
