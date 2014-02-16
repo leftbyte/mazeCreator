@@ -1,0 +1,28 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="UTF-8">
+    <title>Such a maze</title>
+    <style>
+      body {
+      margin: 10px;
+      padding: 10px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <canvas id="mazeCanvas" width="1000" height="1000"></canvas>
+    <script src="mazeCreator.js"></script>
+    <script>
+      var canvas = document.getElementById('mazeCanvas');
+      var context = canvas.getContext('2d');
+      var cellWidth = 20;
+      var amaze = MazeCreator(25, 25);
+      var grid = amaze.create();
+      amaze.drawGrid(grid, cellWidth, context);
+    </script>
+  </body>
+
+</html>

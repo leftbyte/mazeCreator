@@ -1,23 +1,24 @@
-// - - - - - - - - - - - - - - - - - - - - - - -
-// maze.js - example maze creator in javascript.
+// - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// mazeCreator.js - example maze creator in javascript.
 // Author: Dan Phung
 //
-// Tested using 'node version v0.10.25'
-// - - - - - - - - - - - - - - - - - - - - - - -
+// Tested using 'node version v0.10.25' in OSX Terminal.
+//
+// Added web page front end.
+//
+// - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 // Maze creator prototype that encapsulates a grid with cells, each made up of a
 // set of north, east, south, or/and west walls.  The main function is run().
 var MazeCreator = function(dimX, dimY) {
-    // For node, use console.log, v8 = print
-    outputfn = console.log;
-
     // Maze globals
-    var g_debugLevel = 3;
+    var g_debugLevel = 1;
     var g_gridDim = [dimX, dimY];
     var g_mazeStart = [0, 0];
     var g_mazeEnd = [Math.floor(dimX / 2), Math.floor(dimY / 2)];
     var g_minBranches = Math.floor(Math.sqrt(g_gridDim[0] * g_gridDim[1]));
     var g_minSlnLen = Math.floor(Math.sqrt(g_gridDim[0] * g_gridDim[1]));
+    var g_cellWidth = 20; // in pixels
 
     var UNDEFINED = 0;
     var START     = 1;
@@ -29,6 +30,9 @@ var MazeCreator = function(dimX, dimY) {
     var SOUTH   = 2;
     var WEST    = 3;
     var NOWHERE = 4;
+
+    // For node, use console.log. v8, print
+    var outputfn = console.log;
 
     var dirToStr = function(dir) {
         switch (dir) {
@@ -187,6 +191,61 @@ var MazeCreator = function(dimX, dimY) {
         return {
             toString: function() {
                 return "" + x + "," + y + " " + typeToStr(cellType);
+            },
+            // Input is the canvas 2d context
+            draw: function(context, width) {
+                context.beginPath();
+                context.lineWidth = 2;
+                context.moveTo(x * width, y * width);
+                if (north === undefined) {
+                    context.lineTo((x + 1) * width, y * width);
+                } else {
+                    context.moveTo((x + 1) * width, y * width);
+                }
+                if (east === undefined) {
+                    context.lineTo((x + 1) * width, (y + 1) * width);
+                } else {
+                    context.moveTo((x + 1) * width, (y + 1) * width);
+                }
+                if (south === undefined) {
+                    context.lineTo(x * width, (y + 1) * width);
+                } else {
+                    context.moveTo(x * width, (y + 1) * width);
+                }
+                if (west === undefined) {
+                    context.lineTo(x * width, y * width);
+                } else {
+                    context.moveTo(x * width, y * width);
+                }
+                context.stroke();
+
+                if (cellType === START) {
+                    var centerX = (x + 1/2) * width;
+                    var centerY = (y + 1/2) * width;
+                    var radius = width * 4 / 10;
+
+                    context.beginPath();
+                    context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
+                    context.fillStyle = 'green';
+                    context.fill();
+                    // context.lineWidth = 2;
+                    // context.strokeStyle = 'black';
+                    context.stroke();
+                }
+
+                if (cellType === END) {
+                    var centerX = (x + 1/2) * width;
+                    var centerY = (y + 1/2) * width;
+                    var radius = width * 4 / 10;
+
+                    context.beginPath();
+                    context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
+                    context.fillStyle = 'red';
+                    context.fill();
+                    // context.lineWidth = 2;
+                    // context.strokeStyle = 'black';
+                    context.stroke();
+                }
             },
             incrementNeighbor: function() {
                 numNeighbors += 1;
@@ -691,44 +750,62 @@ var MazeCreator = function(dimX, dimY) {
     // force a solution.  We then run a couple of "fake" paths to make the maze
     // more interesting.
     return {
-    run: function() {
-        var grid;
-        var slnPath;
-        var mat;
-        var startCell, endCell;
-        var fakePaths;
+        create: function(printOutput) {
+            var grid;
+            var slnPath;
+            var mat;
+            var startCell, endCell;
+            var fakePaths;
 
-        grid = initGrid(g_gridDim[0], g_gridDim[1]);
-        mat = grid.getGrid();
+            grid = initGrid(g_gridDim[0], g_gridDim[1]);
+            mat = grid.getGrid();
 
-        startCell = mat[g_mazeStart[0]][g_mazeStart[1]];
-        endCell = mat[g_mazeEnd[0]][g_mazeEnd[1]];
-        setMazeCell(grid, startCell, START);
-        setMazeCell(grid, endCell, END);
+            startCell = mat[g_mazeStart[0]][g_mazeStart[1]];
+            endCell = mat[g_mazeEnd[0]][g_mazeEnd[1]];
+            setMazeCell(grid, startCell, START);
+            setMazeCell(grid, endCell, END);
 
-        outputfn("maze start: " + g_mazeStart[0] + "," + g_mazeStart[1] + " (top left)");
-        outputfn("       end: " + g_mazeEnd[0] + "," + g_mazeEnd[1] + " cell marked by '( )'");
+            // XXX: Chrome console is showing a 'TypeError: Illegal invocation',
+            // but it isn't a critical error.
+            if (printOutput) {
+                outputfn("maze start: " + g_mazeStart[0] + "," + g_mazeStart[1] +
+                         " (top hleft)");
+                outputfn("       end: " + g_mazeEnd[0] + "," + g_mazeEnd[1] +
+                         " cell marked by '( )'");
+            }
 
-        slnPath = createPath(grid, startCell, [END],
-                             g_minSlnLen, true, null);
+            slnPath = createPath(grid, startCell, [END],
+                                 g_minSlnLen, true, null);
 
-        outputfn("maze solution:");
+            if (printOutput) {
+                outputfn("maze solution:");
+                printGrid(grid);
+            }
+            fakePaths = createFakePaths(grid, slnPath);
 
-        // XXX Instead of "printing" these paths to the console, we can return
-        // them to be processed in the render request.
+            if (printOutput) {
+                outputfn("maze with first order diversions:");
+                printGrid(grid);
+            }
 
-        printGrid(grid);
-        fakePaths = createFakePaths(grid, slnPath);
+            if (g_debugLevel > 7) {
+                dumpGrid(grid);
+            }
 
-        outputfn("maze with first order diversions:");
-        printGrid(grid);
-
-        if (g_debugLevel > 7) {
-            dumpGrid(grid);
-        }
-    }
+            return grid;
+        },
+        // Input is the canvas 2d context
+        drawGrid: function(grid, cellWidth, context) {
+            var i, j;
+            var mat = grid.getGrid();
+            for (j = 0; j < grid.dimY(); j += 1) {
+                for (i = 0; i < grid.dimY(); i += 1) {
+                    mat[i][j].draw(context, cellWidth);
+                }
+            }
+        },
     };
 };
 
-var app = MazeCreator(30, 30);
-app.run();
+var app = MazeCreator(25, 25);
+app.create(true);
