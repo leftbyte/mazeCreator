@@ -55,19 +55,26 @@
 
           // 'g'
           } else if (event.keyCode == 71) {
+              console.log("toggling ghost mode");
               amaze.toggleGhostMode();
 
           // 'h'
           } else if (event.keyCode == 72) {
+              console.log("toggling hint mode");
               amaze.toggleHintMode();
+
+          // 'n'
+          } else if (event.keyCode == 78) {
+              console.log("new map");
+              amaze.create();
           }
 
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           if (!amaze.solved()) {
              amaze.drawMazeGrid(ctx, cellWidth);
           } else {
-             var x = canvas.width / 2 + 50;
-             var y = 30;
+             var x = canvas.width / 2 - 30;
+             var y = 40;
              ctx.font = '30pt Helvetica';
              ctx.textAlign = 'center';
              ctx.fillStyle = 0xCC6600;
@@ -76,7 +83,7 @@
              var imageObj = new Image();
              imageObj.src = 'doge_20store_original.jpg';
              imageObj.onload = function() {
-                ctx.drawImage(imageObj, 69, 50);
+                ctx.drawImage(imageObj, 40, 50, 350, 500);
              };
           }
           drawInstructions();
@@ -89,6 +96,7 @@
          ctx.textAlign = 'center';
          ctx.fillStyle = 'black';
          ctx.fillText("press \'space\' to reset location", x, y);
+         ctx.fillText("n: new, h: hint", x, y + 15);
       };
 
     </script>

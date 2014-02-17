@@ -15,14 +15,17 @@ var ENABLE_CONSOLE_OUTPUT = false;
 // set of north, east, south, or/and west walls.  The main function is run().
 var MazeCreator = function(dimX, dimY) {
     // Maze globals
-    var g_debugLevel = 1;
-    var g_gridDim = [dimX, dimY];
-    var g_mazeStart = [0, 0];
-    var g_mazeEnd = [Math.floor(dimX / 2), Math.floor(dimY / 2)];
-    var g_minBranches = Math.floor(Math.sqrt(g_gridDim[0] * g_gridDim[1]));
-    var g_minSlnLen = Math.floor(Math.sqrt(g_gridDim[0] * g_gridDim[1]));
-    var g_currentCell;
-    var g_solved;
+    var m_debugLevel = 1;
+    var m_gridDim = [dimX, dimY];
+    var m_mazeStart = [0, 0];
+    var m_mazeEnd = [Math.floor(dimX / 2), Math.floor(dimY / 2)];
+    var m_minBranches = Math.floor(Math.sqrt(m_gridDim[0] * m_gridDim[1]));
+    var m_minSlnLen = Math.floor(Math.sqrt(m_gridDim[0] * m_gridDim[1]));
+    var m_currentCell;
+    var m_solved;
+    var m_ghostMode = false;
+    var m_showHint = false;
+    var m_grid = undefined;
 
     var UNDEFINED = 0;
     var START     = 1;
@@ -190,9 +193,79 @@ var MazeCreator = function(dimX, dimY) {
         var west;
 
         var cellType = UNDEFINED;
+        var isCurrent = false;
+        var isSolutionPath = false;
+
         // neighbors are adjacent cells that are defined.
         var numNeighbors = 0;
-        var isCurrent = false;
+
+        var drawWalls = function(canvasContext, width) {
+            var numWalls = 0;
+            canvasContext.beginPath();
+            canvasContext.lineWidth = 2;
+            canvasContext.moveTo(x * width, y * width);
+            if (north === undefined) {
+                canvasContext.lineTo((x + 1) * width, y * width);
+                numWalls += 1;
+            } else {
+                canvasContext.moveTo((x + 1) * width, y * width);
+            }
+            if (east === undefined) {
+                canvasContext.lineTo((x + 1) * width, (y + 1) * width);
+                numWalls += 1;
+            } else {
+                canvasContext.moveTo((x + 1) * width, (y + 1) * width);
+            }
+            if (south === undefined) {
+                canvasContext.lineTo(x * width, (y + 1) * width);
+                numWalls += 1;
+            } else {
+                canvasContext.moveTo(x * width, (y + 1) * width);
+            }
+            if (west === undefined) {
+                canvasContext.lineTo(x * width, y * width);
+                numWalls += 1;
+            } else {
+                canvasContext.moveTo(x * width, y * width);
+            }
+
+            // XXX This doesn't really look good...It would be better to
+            // remove the inner walls in these things...
+            // if (numWalls === 4) {
+            //     canvasContext.fillStyle = 'grey';
+            //     canvasContext.fill();
+            //     canvasContext.closePath();
+            // }
+            canvasContext.stroke();
+        };
+
+        var highlightPath = function(canvasContext, width, color, pad) {
+            canvasContext.beginPath();
+            canvasContext.lineWidth = 0;
+            canvasContext.moveTo(x * width + pad, y * width + pad);
+            canvasContext.lineTo((x + 1) * width - pad, y * width + pad);
+
+            canvasContext.lineTo((x + 1) * width - pad, (y + 1) * width - pad);
+
+            canvasContext.lineTo(x * width + pad, (y + 1) * width - pad);
+            canvasContext.lineTo(x * width + pad, y * width + pad);
+            canvasContext.fillStyle = color;
+            canvasContext.fill();
+            canvasContext.closePath();
+        };
+
+        var drawCurrentIcon = function(canvasContext, width, color) {
+            var centerX = (x + 1/2) * width;
+            var centerY = (y + 1/2) * width;
+            var radius = width * 4 / 10;
+
+            canvasContext.beginPath();
+            canvasContext.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
+            canvasContext.fillStyle = color;
+            canvasContext.fill();
+            canvasContext.stroke();
+        }
+
         return {
             setCurrent: function(status) {
                 isCurrent = status;
@@ -201,56 +274,19 @@ var MazeCreator = function(dimX, dimY) {
                 return "" + x + "," + y + " " + typeToStr(cellType);
             },
             // Input is the canvas 2d context
-            draw: function(canvasContext, width) {
-                canvasContext.beginPath();
-                canvasContext.lineWidth = 2;
-                canvasContext.moveTo(x * width, y * width);
-                if (north === undefined) {
-                    canvasContext.lineTo((x + 1) * width, y * width);
-                } else {
-                    canvasContext.moveTo((x + 1) * width, y * width);
+            draw: function(canvasContext, width, showHint) {
+                drawWalls(canvasContext, width);
+
+                if (showHint && isSolutionPath) {
+                    highlightPath(canvasContext, width, "#66ff66", 7);
                 }
-                if (east === undefined) {
-                    canvasContext.lineTo((x + 1) * width, (y + 1) * width);
-                } else {
-                    canvasContext.moveTo((x + 1) * width, (y + 1) * width);
-                }
-                if (south === undefined) {
-                    canvasContext.lineTo(x * width, (y + 1) * width);
-                } else {
-                    canvasContext.moveTo(x * width, (y + 1) * width);
-                }
-                if (west === undefined) {
-                    canvasContext.lineTo(x * width, y * width);
-                } else {
-                    canvasContext.moveTo(x * width, y * width);
-                }
-                canvasContext.stroke();
 
                 if (isCurrent) {
-                    var centerX = (x + 1/2) * width;
-                    var centerY = (y + 1/2) * width;
-                    var radius = width * 4 / 10;
-
-                    canvasContext.beginPath();
-                    canvasContext.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
-                    canvasContext.fillStyle = 'green';
-                    canvasContext.fill();
-                    canvasContext.stroke();
+                    drawCurrentIcon(canvasContext, width, 'orange');
                 }
 
                 if (cellType === END) {
-                    var centerX = (x + 1/2) * width;
-                    var centerY = (y + 1/2) * width;
-                    var radius = width * 4 / 10;
-
-                    canvasContext.beginPath();
-                    canvasContext.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
-                    canvasContext.fillStyle = 'red';
-                    canvasContext.fill();
-                    // canvasContext.lineWidth = 2;
-                    // canvasContext.strokeStyle = 'black';
-                    canvasContext.stroke();
+                    highlightPath(canvasContext, width, 'green', 0);
                 }
             },
             incrementNeighbor: function() {
@@ -337,6 +373,12 @@ var MazeCreator = function(dimX, dimY) {
                 }
                 cellType = newType;
             },
+            setIsSolution: function() {
+                isSolutionPath = true;
+            },
+            getIsSolution: function() {
+                return isSolutionPath;
+            },
         };
     };
 
@@ -385,6 +427,11 @@ var MazeCreator = function(dimX, dimY) {
             contains: function(c) {
                 return steps.indexOf(c) !== -1;
             },
+            markSolution: function() {
+                for (var i = 0; i < steps.length; i++) {
+                    steps[i].setIsSolution();
+                }
+            }
         };
     }
 
@@ -444,7 +491,7 @@ var MazeCreator = function(dimX, dimY) {
         var maxY = grid.dimY();
         switch (dir) {
         case NORTH:
-            if (g_debugLevel > 5) {
+            if (m_debugLevel > 5) {
                 console.log("  set north: " + thisCell.getX() + "," + thisCell.getY());
                 console.log("  set south: " + nextCell.getX() + "," + nextCell.getY());
             }
@@ -453,7 +500,7 @@ var MazeCreator = function(dimX, dimY) {
             nextCell.setCellType(type);
             break;
         case EAST:
-            if (g_debugLevel > 5) {
+            if (m_debugLevel > 5) {
                 console.log("  set east: " + thisCell.getX() + "," + thisCell.getY());
                 console.log("  set west: " + nextCell.getX() + "," + nextCell.getY());
             }
@@ -462,7 +509,7 @@ var MazeCreator = function(dimX, dimY) {
             nextCell.setCellType(type);
             break;
         case SOUTH:
-            if (g_debugLevel > 5) {
+            if (m_debugLevel > 5) {
                 console.log("  set south: " + thisCell.getX() + "," + thisCell.getY());
                 console.log("  set north: " + nextCell.getX() + "," + nextCell.getY());
             }
@@ -471,7 +518,7 @@ var MazeCreator = function(dimX, dimY) {
             nextCell.setCellType(type);
             break;
         case WEST:
-            if (g_debugLevel > 5) {
+            if (m_debugLevel > 5) {
                 console.log("  set west: " + thisCell.getX() + "," + thisCell.getY());
                 console.log("  set east: " + nextCell.getX() + "," + nextCell.getY());
             }
@@ -500,12 +547,12 @@ var MazeCreator = function(dimX, dimY) {
         for (var nextDir = 0; nextDir < 4; nextDir += 1) {
             var c = getAdjGridCell(nextCell, grid, nextDir % 4);
             if (c.getCellType() === UNDEFINED) {
-                if (g_debugLevel > 6) {
+                if (m_debugLevel > 6) {
                     console.log("  adding " + c.toString() + " to paths to check");
                 }
                 pathsToCheck.push(c);
             } else if (c.getCellType() === END) {
-                if (g_debugLevel > 6) {
+                if (m_debugLevel > 6) {
                     console.log("found " + c.toString());
                 }
                 return true;
@@ -522,13 +569,13 @@ var MazeCreator = function(dimX, dimY) {
                 if (c.getCellType() === UNDEFINED) {
                     if (!pathsToCheck.contains(c) &&
                         !checkedCells.contains(c)) {
-                        if (g_debugLevel > 6) {
+                        if (m_debugLevel > 6) {
                             console.log("adding " + c.toString() + " to paths to check");
                         }
                         pathsToCheck.push(c);
                     }
                 } else if (c.getCellType() === END) {
-                    if (g_debugLevel > 6) {
+                    if (m_debugLevel > 6) {
                         console.log("found " + c.toString());
                     }
                     return true;
@@ -615,7 +662,7 @@ var MazeCreator = function(dimX, dimY) {
         var tries = 0;
         while (!pathValid) {
             nextCell = getAdjGridCell(currCell, grid, nextPath);
-            if (g_debugLevel > 5) {
+            if (m_debugLevel > 5) {
                 console.log("    next path, " + dirToStr(nextPath) +
                       " nextCell to check " + nextCell.toString());
             }
@@ -632,7 +679,7 @@ var MazeCreator = function(dimX, dimY) {
                 (currPath.contains(nextCell) ||
                  (cellCreatesPartition(currCell, currPath, grid) &&
                   !partitionContainsEnd(nextCell, grid)))) {
-                if (g_debugLevel > 3) {
+                if (m_debugLevel > 3) {
                     console.log(currPath.toString());
                     console.log("  " + dirToStr(nextPath) + " cell " +
                           nextCell.getX() + "," + nextCell.getY() +
@@ -641,7 +688,7 @@ var MazeCreator = function(dimX, dimY) {
                 pathValid = false;
             }
 
-            if (g_debugLevel > 3) {
+            if (m_debugLevel > 3) {
                 console.log("  " + dirToStr(nextPath) + " cell " +
                       nextCell.getX() + "," + nextCell.getY() +
                       ": " + pathValid + " - " + nextCell.getCellTypeStr());
@@ -687,7 +734,7 @@ var MazeCreator = function(dimX, dimY) {
         }
         p.push(currCell);
         while (!stopConditionReached) {
-            if (g_debugLevel > 3) {
+            if (m_debugLevel > 3) {
                 console.log("  finding next valid path for: " +
                       currCell.getX()+ "," + currCell.getY());
             }
@@ -747,68 +794,71 @@ var MazeCreator = function(dimX, dimY) {
     };
 
     var setCurrentCell = function(c) {
-        if (g_currentCell) {
-            g_currentCell.setCurrent(false);
+        if (m_currentCell) {
+            m_currentCell.setCurrent(false);
         }
-        g_currentCell = c;
-        g_currentCell.setCurrent(true);
-        if (g_currentCell.getCellType() === END) {
-            g_solved = true;
+        m_currentCell = c;
+        m_currentCell.setCurrent(true);
+        if (m_currentCell.getCellType() === END) {
+            m_solved = true;
         } else {
-            g_solved = false;
+            m_solved = false;
         }
     };
 
-
-    // run(): run is the main function for the MazeCreator program.  It
-    // initializes the grid then creates paths.  We first create paths until the
-    // start cell or end cell have no free adjacent cells.  At that point we
-    // force a solution.  We then run a couple of "fake" paths to make the maze
-    // more interesting.
     return {
-        m_grid: undefined,
-        m_ghostMode: undefined,
-        m_hintMode: undefined,
+        // create(): create is the main function for the MazeCreator program.
+        // It initializes the grid then creates paths.  We first create paths
+        // until the start cell or end cell have no free adjacent cells.  At
+        // that point we force a solution.  We then run a couple of "fake" paths
+        // to make the maze more interesting.
         create: function(printOutput) {
             var slnPath;
             var mat;
             var startCell, endCell;
             var fakePaths;
 
-            m_grid = initGrid(g_gridDim[0], g_gridDim[1]);
+            m_grid = initGrid(m_gridDim[0], m_gridDim[1]);
             mat = m_grid.getGrid();
 
-            startCell = mat[g_mazeStart[0]][g_mazeStart[1]];
-            endCell = mat[g_mazeEnd[0]][g_mazeEnd[1]];
+            startCell = mat[m_mazeStart[0]][m_mazeStart[1]];
+            endCell = mat[m_mazeEnd[0]][m_mazeEnd[1]];
             setMazeCell(m_grid, startCell, START);
             setMazeCell(m_grid, endCell, END);
 
             if (printOutput) {
-                console.log("maze start: " + g_mazeStart[0] + "," + g_mazeStart[1] +
+                console.log("maze start: " + m_mazeStart[0] + "," + m_mazeStart[1] +
                          " (top hleft)");
-                console.log("       end: " + g_mazeEnd[0] + "," + g_mazeEnd[1] +
+                console.log("       end: " + m_mazeEnd[0] + "," + m_mazeEnd[1] +
                          " cell marked by '( )'");
             }
 
             slnPath = createPath(m_grid, startCell, [END],
-                                 g_minSlnLen, true, null);
+                                 m_minSlnLen, true, null);
+            slnPath.markSolution();
 
             if (printOutput) {
                 console.log("maze solution:");
                 printGrid(m_grid);
             }
-            fakePaths = createFakePaths(m_grid, slnPath);
-            m_ghostMode = false;
-            m_hintMode = false;
 
+            fakePaths = createFakePaths(m_grid, slnPath);
             setCurrentCell(startCell);
+
+            if (m_showHint === undefined) {
+                m_showHint = false;
+            }
+
+            if (m_ghostMode === undefined) {
+                m_ghostMode = false;
+            }
 
             if (printOutput) {
                 console.log("maze with first order diversions:");
                 printGrid(m_grid);
             }
 
-            if (g_debugLevel > 7) {
+            if (m_debugLevel > 7) {
                 dumpGrid(m_grid);
             }
             return startCell;
@@ -820,7 +870,7 @@ var MazeCreator = function(dimX, dimY) {
             var mat = m_grid.getGrid();
             for (j = 0; j < m_grid.dimY(); j += 1) {
                 for (i = 0; i < m_grid.dimY(); i += 1) {
-                    mat[i][j].draw(ctx, cellWidth);
+                    mat[i][j].draw(ctx, cellWidth, m_showHint);
                 }
             }
         },
@@ -829,16 +879,16 @@ var MazeCreator = function(dimX, dimY) {
         // preserved across calls.
         resetStart: function() {
             var mat = m_grid.getGrid();
-            startCell = mat[g_mazeStart[0]][g_mazeStart[1]];
+            startCell = mat[m_mazeStart[0]][m_mazeStart[1]];
             setCurrentCell(startCell);
         },
 
         moveNorth: function() {
             var c;
             if (m_ghostMode) {
-                    c = getAdjGridCell(g_currentCell, m_grid, NORTH);
+                    c = getAdjGridCell(m_currentCell, m_grid, NORTH);
             } else {
-                c = g_currentCell.getCell(NORTH);
+                c = m_currentCell.getCell(NORTH);
             }
 
             if (c) {
@@ -849,9 +899,9 @@ var MazeCreator = function(dimX, dimY) {
         moveEast: function() {
             var c;
             if (m_ghostMode) {
-                    c = getAdjGridCell(g_currentCell, m_grid, EAST);
+                    c = getAdjGridCell(m_currentCell, m_grid, EAST);
             } else {
-                c = g_currentCell.getCell(EAST);
+                c = m_currentCell.getCell(EAST);
             }
 
             if (c) {
@@ -862,9 +912,9 @@ var MazeCreator = function(dimX, dimY) {
         moveSouth: function() {
             var c;
             if (m_ghostMode) {
-                    c = getAdjGridCell(g_currentCell, m_grid, SOUTH);
+                    c = getAdjGridCell(m_currentCell, m_grid, SOUTH);
             } else {
-                c = g_currentCell.getCell(SOUTH);
+                c = m_currentCell.getCell(SOUTH);
             }
 
             if (c) {
@@ -875,9 +925,9 @@ var MazeCreator = function(dimX, dimY) {
         moveWest: function() {
             var c;
             if (m_ghostMode) {
-                    c = getAdjGridCell(g_currentCell, m_grid, WEST);
+                    c = getAdjGridCell(m_currentCell, m_grid, WEST);
             } else {
-                c = g_currentCell.getCell(WEST);
+                c = m_currentCell.getCell(WEST);
             }
 
             if (c) {
@@ -890,11 +940,11 @@ var MazeCreator = function(dimX, dimY) {
         },
 
         toggleHintMode: function()  {
-            m_hintMode = !m_hintMode;
+            m_showHint = !m_showHint;
         },
 
         solved: function()  {
-            return g_solved;
+            return m_solved;
         },
     };
 };
