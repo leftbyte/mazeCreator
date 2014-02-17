@@ -883,6 +883,10 @@ var MazeCreator = function(dimX, dimY) {
             }
         },
 
+        toggleGhostMode: function()  {
+            m_ghostMode = !m_ghostMode;
+        },
+
         solved: function()  {
             return g_solved;
         },
