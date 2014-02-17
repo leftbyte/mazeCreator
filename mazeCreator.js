@@ -768,7 +768,8 @@ var MazeCreator = function(dimX, dimY) {
     return {
         m_grid: undefined,
         m_ghostMode: undefined,
-        create: function(ghostMode, printOutput) {
+        m_hintMode: undefined,
+        create: function(printOutput) {
             var slnPath;
             var mat;
             var startCell, endCell;
@@ -797,7 +798,8 @@ var MazeCreator = function(dimX, dimY) {
                 printGrid(m_grid);
             }
             fakePaths = createFakePaths(m_grid, slnPath);
-            m_ghostMode = ghostMode;
+            m_ghostMode = false;
+            m_hintMode = false;
 
             setCurrentCell(startCell);
 
@@ -885,6 +887,10 @@ var MazeCreator = function(dimX, dimY) {
 
         toggleGhostMode: function()  {
             m_ghostMode = !m_ghostMode;
+        },
+
+        toggleHintMode: function()  {
+            m_hintMode = !m_hintMode;
         },
 
         solved: function()  {
