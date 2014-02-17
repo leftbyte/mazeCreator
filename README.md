@@ -1,8 +1,9 @@
 mazeCreator
 ===========
 
-Maze creator in javascript.  Tested with node version v0.10.25 on Terminal.
-Outputs to the terminal in ASCII text.
+Maze app in javascript.  mazeCreator builds the maze and maze.html provides the
+front end.
 
 To run:
-  > node mazeCreator.js
+  > Open up a browser.  This was tested with Chrome 32.0.1700.77.
+  > navigate to maze.html.  Play and have fun!
