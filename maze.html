@@ -14,7 +14,7 @@
 
   <body>
     <!-- width/height of 500 = 25x25 grid with 20 px cell widths. -->
-    <canvas id="mazeCanvas" width="500" height="500"></canvas>
+    <canvas id="mazeCanvas" width="500" height="550"></canvas>
     <script src="mazeCreator.js"></script>
     <script>
       var canvas = document.getElementById('mazeCanvas');
@@ -23,6 +23,7 @@
       var amaze = MazeCreator(25, 25);
       amaze.create(false);
       amaze.drawMazeGrid(ctx, cellWidth);
+      drawInstructions();
 
       window.addEventListener('keydown',processKeyDown,true);
       function processKeyDown(event) {
@@ -50,27 +51,41 @@
           // spacebar
           } else if (event.keyCode == 32) {
               amaze.resetStart();
+
+          // 'c'
+          } else if (event.keyCode == 67) {
+              amaze.toggleGhostMode();
           }
 
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           if (!amaze.solved()) {
              amaze.drawMazeGrid(ctx, cellWidth);
           } else {
-             var imageObj = new Image();
-
              var x = canvas.width / 2 + 50;
              var y = 30;
-
              ctx.font = '30pt Helvetica';
              ctx.textAlign = 'center';
              ctx.fillStyle = 0xCC6600;
              ctx.fillText('Such amaze!', x, y);
+
+             var imageObj = new Image();
              imageObj.src = 'doge_20store_original.jpg';
              imageObj.onload = function() {
-             ctx.drawImage(imageObj, 69, 50);
-           };
+                ctx.drawImage(imageObj, 69, 50);
+             };
           }
+          drawInstructions();
       };
+
+      function drawInstructions() {
+         var x = canvas.width / 2;
+         var y = canvas.height - 20;
+         ctx.font = '12pt Helvetica';
+         ctx.textAlign = 'center';
+         ctx.fillStyle = 'black';
+         ctx.fillText("press \'space\' to reset location", x, y);
+      };
+
     </script>
   </body>
 </html>
