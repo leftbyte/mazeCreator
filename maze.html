@@ -13,16 +13,64 @@
   </head>
 
   <body>
-    <canvas id="mazeCanvas" width="1000" height="1000"></canvas>
+    <!-- width/height of 500 = 25x25 grid with 20 px cell widths. -->
+    <canvas id="mazeCanvas" width="500" height="500"></canvas>
     <script src="mazeCreator.js"></script>
     <script>
       var canvas = document.getElementById('mazeCanvas');
-      var context = canvas.getContext('2d');
+      var ctx = canvas.getContext('2d');
       var cellWidth = 20;
       var amaze = MazeCreator(25, 25);
-      var grid = amaze.create();
-      amaze.drawGrid(grid, cellWidth, context);
+      amaze.create(false);
+      amaze.drawMazeGrid(ctx, cellWidth);
+
+      window.addEventListener('keydown',processKeyDown,true);
+      function processKeyDown(event) {
+
+          // up arrow
+          if (event.keyCode == 38) {
+              console.log("move up");
+              amaze.moveNorth();
+
+          // right arrow
+          } else if (event.keyCode == 39) {
+              amaze.moveEast();
+              console.log("move right")
+
+          // down arrow
+          } else if (event.keyCode == 40) {
+              amaze.moveSouth();
+              console.log("move down");
+
+          // left arrow
+          } else if (event.keyCode == 37) {
+              amaze.moveWest();
+              console.log("move left");
+
+          // spacebar
+          } else if (event.keyCode == 32) {
+              amaze.resetStart();
+          }
+
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          if (!amaze.solved()) {
+             amaze.drawMazeGrid(ctx, cellWidth);
+          } else {
+             var imageObj = new Image();
+
+             var x = canvas.width / 2 + 50;
+             var y = 30;
+
+             ctx.font = '30pt Helvetica';
+             ctx.textAlign = 'center';
+             ctx.fillStyle = 0xCC6600;
+             ctx.fillText('Such amaze!', x, y);
+             imageObj.src = 'doge_20store_original.jpg';
+             imageObj.onload = function() {
+             ctx.drawImage(imageObj, 69, 50);
+           };
+          }
+      };
     </script>
   </body>
-
 </html>
