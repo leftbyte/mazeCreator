@@ -22,7 +22,7 @@
       var ctx = canvas.getContext('2d');
       var cellWidth = 20;
       var amaze = MazeCreator(25, 25);
-      amaze.create(false);
+      amaze.create();
       amaze.drawMazeGrid(ctx, cellWidth);
       drawInstructions();
 
@@ -53,9 +53,13 @@
           } else if (event.keyCode == 32) {
               amaze.resetStart();
 
-          // 'c'
-          } else if (event.keyCode == 67) {
+          // 'g'
+          } else if (event.keyCode == 71) {
               amaze.toggleGhostMode();
+
+          // 'h'
+          } else if (event.keyCode == 72) {
+              amaze.toggleHintMode();
           }
 
           ctx.clearRect(0, 0, canvas.width, canvas.height);
