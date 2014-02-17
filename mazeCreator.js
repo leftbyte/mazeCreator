@@ -286,7 +286,7 @@ var MazeCreator = function(dimX, dimY) {
                 }
 
                 if (cellType === END) {
-                    highlightPath(canvasContext, width, 'green', 0);
+                    highlightPath(canvasContext, width, 'green', 2);
                 }
             },
             incrementNeighbor: function() {
