@@ -7,6 +7,12 @@
 //
 // Added web page front end.
 //
+// Currently the maze building and displaying are all one monolithic
+// architecture.  What we should really do is split the creation of the maze to
+// the server side and the drawing/status of the maze should sit on the client
+// side.  Though, it is nice to have this all on the client side so you could
+// offline the app.
+//
 // - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 var ENABLE_CONSOLE_OUTPUT = false;
@@ -25,7 +31,7 @@ var MazeCreator = function(dimX, dimY) {
     var m_solved;
     var m_ghostMode = false;
     var m_showHint = false;
-    var m_grid = undefined;
+    var m_grid;
 
     var UNDEFINED = 0;
     var START     = 1;
@@ -39,7 +45,7 @@ var MazeCreator = function(dimX, dimY) {
     var NOWHERE = 4;
 
     // For node, use console.log. v8, print
-    var outputfn = console.log
+    var outputfn = console.log;
 
     var dirToStr = function(dir) {
         switch (dir) {
@@ -113,12 +119,13 @@ var MazeCreator = function(dimX, dimY) {
     var printGrid = function(grid) {
         var i, j;
         var mat = grid.getGrid();
+        var c;
 
         // First we print out the top line.
         var topStr = " ";
         j = 0;
         for (i = 0; i < grid.dimX(); i += 1) {
-            var c = mat[i][j];
+            c = mat[i][j];
             if (c.getCell(NORTH) === undefined) {
                 topStr += "_";
             } else {
@@ -134,7 +141,7 @@ var MazeCreator = function(dimX, dimY) {
             var str = "";
             // Next print out the east, south and west lines.
             for (i = 0; i < grid.dimX(); i += 1) {
-                var c = mat[i][j];
+                c = mat[i][j];
                 if (c.getCell(WEST) === undefined) {
                     // For the end cell, draw sides with '(' or ')'.
                     if (c.getCellType() === END) {
@@ -173,7 +180,7 @@ var MazeCreator = function(dimX, dimY) {
         console.log("Dumping grid data");
         for (j = 0; j < grid.dimY(); j += 1) {
             // Next print out the east, south and west lines.
-            var c
+            var c;
             for (i = 0; i < grid.dimX(); i += 1) {
                 c = mat[i][j];
 
@@ -264,14 +271,14 @@ var MazeCreator = function(dimX, dimY) {
             canvasContext.fillStyle = color;
             canvasContext.fill();
             canvasContext.stroke();
-        }
+        };
 
         return {
             setCurrent: function(status) {
                 isCurrent = status;
             },
             toString: function() {
-                return "" + x + "," + y + " " + typeToStr(cellType);
+                return x + "," + y + " " + typeToStr(cellType);
             },
             // Input is the canvas 2d context
             draw: function(canvasContext, width, showHint) {
@@ -378,7 +385,7 @@ var MazeCreator = function(dimX, dimY) {
             },
             getIsSolution: function() {
                 return isSolutionPath;
-            },
+            }
         };
     };
 
@@ -408,7 +415,8 @@ var MazeCreator = function(dimX, dimY) {
             },
             toString: function() {
                 var str = "len: " + steps.length + " - ";
-                for (var i = 0 ; i < steps.length; i += 1) {
+                var i;
+                for (i = 0 ; i < steps.length; i += 1) {
                     str += i + ": " + steps[i].toString() + " ";
                 }
                 return str;
@@ -428,12 +436,13 @@ var MazeCreator = function(dimX, dimY) {
                 return steps.indexOf(c) !== -1;
             },
             markSolution: function() {
-                for (var i = 0; i < steps.length; i++) {
+                var i;
+                for (i = 0; i < steps.length; i++) {
                     steps[i].setIsSolution();
                 }
             }
         };
-    }
+    };
 
     // Creates a grid where each cell is instatiated and all the cells are
     // connected but undefined.
@@ -538,14 +547,17 @@ var MazeCreator = function(dimX, dimY) {
     var partitionContainsEnd = function(nextCell, grid) {
         var checkedCells = path();
         var pathsToCheck = path();
+        var nextDir;
+        var c;
 
         // prime the loop
         if (nextCell.getCellType() === END) {
             return true;
         }
+
         // REFACTOR
-        for (var nextDir = 0; nextDir < 4; nextDir += 1) {
-            var c = getAdjGridCell(nextCell, grid, nextDir % 4);
+        for (nextDir = 0; nextDir < 4; nextDir += 1) {
+            c = getAdjGridCell(nextCell, grid, nextDir % 4);
             if (c.getCellType() === UNDEFINED) {
                 if (m_debugLevel > 6) {
                     console.log("  adding " + c.toString() + " to paths to check");
@@ -564,8 +576,8 @@ var MazeCreator = function(dimX, dimY) {
             var nextPath = pathsToCheck.pop();
 
             // REFACTOR, repeated code with above.
-            for (var nextDir = 0; nextDir < 4; nextDir += 1) {
-                var c = getAdjGridCell(nextPath, grid, nextDir % 4);
+            for (nextDir = 0; nextDir < 4; nextDir += 1) {
+                c = getAdjGridCell(nextPath, grid, nextDir % 4);
                 if (c.getCellType() === UNDEFINED) {
                     if (!pathsToCheck.contains(c) &&
                         !checkedCells.contains(c)) {
@@ -585,7 +597,7 @@ var MazeCreator = function(dimX, dimY) {
         }
 
         return false;
-    }
+    };
 
     // Check if the front or two sides creates a wall defining a new partition.
     var checkPathDirection = function(currCell, prevCell, grid, dir) {
@@ -606,7 +618,7 @@ var MazeCreator = function(dimX, dimY) {
                 return false;
             }
         }
-    }
+    };
 
     // Returns true if the cell could create a new partition, which can only
     // happen if the current cell's direction heads into a defined set of cells.
@@ -725,7 +737,7 @@ var MazeCreator = function(dimX, dimY) {
         var currCell = startCell;
         var pathLen = 0;
         var stopConditionReached = false;
-        var p;
+        var p, c;
 
         if (existingPath === null) {
             p = path();
@@ -751,7 +763,7 @@ var MazeCreator = function(dimX, dimY) {
             p.push(currCell);
             pathLen += 1;
 
-            for (var c = 0; c < stopConditions.length; c += 1) {
+            for (c = 0; c < stopConditions.length; c += 1) {
                 if (currCell.getCellType() === stopConditions[c]) {
                     stopConditionReached = true;
                     break;
@@ -768,25 +780,24 @@ var MazeCreator = function(dimX, dimY) {
         // of the grid to see if we need to iterate
         // over the fake paths to add more trails.
         var paths = [];
+        var s, c;
 
         var steps = slnPath.getSteps();
-        for (var s = 0; s < steps.length; s++) {
-            var c = steps[s];
+        for (s = 0; s < steps.length; s++) {
+            c = steps[s];
             if (c.getCellType() === END) {
                 break;
             }
-            if (c.getNeighbors > 3) {
-                continue;
-            }
-
-            var nextDir = NORTH;
-            for (; nextDir < 5; nextDir += 1) {
-                var nextCell = getAdjGridCell(c, grid, nextDir % 4);
-                if (c.getCell(nextDir % 4) === undefined &&
-                    nextCell.getCellType() === UNDEFINED) {
-                    setMazeCell(grid, c, PATH, nextDir % 4, nextCell);
-                    var p = createPath(grid, nextCell, [END], 5, false, null);
-                    paths.push(p);
+            if (c.getNeighbors < 4) {
+                var nextDir = NORTH;
+                for (; nextDir < 5; nextDir += 1) {
+                    var nextCell = getAdjGridCell(c, grid, nextDir % 4);
+                    if (c.getCell(nextDir % 4) === undefined &&
+                        nextCell.getCellType() === UNDEFINED) {
+                        setMazeCell(grid, c, PATH, nextDir % 4, nextCell);
+                        var p = createPath(grid, nextCell, [END], 5, false, null);
+                        paths.push(p);
+                    }
                 }
             }
         }
@@ -945,7 +956,7 @@ var MazeCreator = function(dimX, dimY) {
 
         solved: function()  {
             return m_solved;
-        },
+        }
     };
 };
 
