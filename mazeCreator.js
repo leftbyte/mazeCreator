@@ -897,7 +897,7 @@ var MazeCreator = function(dimX, dimY) {
         moveNorth: function() {
             var c;
             if (m_ghostMode) {
-                    c = getAdjGridCell(m_currentCell, m_grid, NORTH);
+                c = getAdjGridCell(m_currentCell, m_grid, NORTH);
             } else {
                 c = m_currentCell.getCell(NORTH);
             }
@@ -910,7 +910,7 @@ var MazeCreator = function(dimX, dimY) {
         moveEast: function() {
             var c;
             if (m_ghostMode) {
-                    c = getAdjGridCell(m_currentCell, m_grid, EAST);
+                c = getAdjGridCell(m_currentCell, m_grid, EAST);
             } else {
                 c = m_currentCell.getCell(EAST);
             }
@@ -923,7 +923,7 @@ var MazeCreator = function(dimX, dimY) {
         moveSouth: function() {
             var c;
             if (m_ghostMode) {
-                    c = getAdjGridCell(m_currentCell, m_grid, SOUTH);
+                c = getAdjGridCell(m_currentCell, m_grid, SOUTH);
             } else {
                 c = m_currentCell.getCell(SOUTH);
             }
@@ -936,7 +936,7 @@ var MazeCreator = function(dimX, dimY) {
         moveWest: function() {
             var c;
             if (m_ghostMode) {
-                    c = getAdjGridCell(m_currentCell, m_grid, WEST);
+                c = getAdjGridCell(m_currentCell, m_grid, WEST);
             } else {
                 c = m_currentCell.getCell(WEST);
             }
