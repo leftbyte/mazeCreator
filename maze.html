@@ -53,6 +53,11 @@
           } else if (event.keyCode == 32) {
               amaze.resetStart();
 
+          // 'b'
+          } else if (event.keyCode == 66) {
+              console.log("adding breadcrumb");
+              amaze.toggleBreadcrumb();
+
           // 'g'
           } else if (event.keyCode == 71) {
               console.log("toggling ghost mode");
@@ -96,7 +101,7 @@
          ctx.textAlign = 'center';
          ctx.fillStyle = 'black';
          ctx.fillText("press \'space\' to reset location", x, y);
-         ctx.fillText("n: new, h: hint", x, y + 15);
+         ctx.fillText("n: new, h: hint, b: breadcrumb", x, y + 20);
       };
 
     </script>

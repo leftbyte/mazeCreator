@@ -200,6 +200,7 @@ var MazeCreator = function(dimX, dimY) {
         var west;
 
         var cellType = UNDEFINED;
+        var hasBreadcrumb = false;
         var isCurrent = false;
         var isSolutionPath = false;
 
@@ -246,16 +247,16 @@ var MazeCreator = function(dimX, dimY) {
             canvasContext.stroke();
         };
 
-        var highlightPath = function(canvasContext, width, color, pad) {
+        var highlightPath = function(canvasContext, width, color, padding) {
             canvasContext.beginPath();
             canvasContext.lineWidth = 0;
-            canvasContext.moveTo(x * width + pad, y * width + pad);
-            canvasContext.lineTo((x + 1) * width - pad, y * width + pad);
+            canvasContext.moveTo(x * width + padding, y * width + padding);
+            canvasContext.lineTo((x + 1) * width - padding, y * width + padding);
 
-            canvasContext.lineTo((x + 1) * width - pad, (y + 1) * width - pad);
+            canvasContext.lineTo((x + 1) * width - padding, (y + 1) * width - padding);
 
-            canvasContext.lineTo(x * width + pad, (y + 1) * width - pad);
-            canvasContext.lineTo(x * width + pad, y * width + pad);
+            canvasContext.lineTo(x * width + padding, (y + 1) * width - padding);
+            canvasContext.lineTo(x * width + padding, y * width + padding);
             canvasContext.fillStyle = color;
             canvasContext.fill();
             canvasContext.closePath();
@@ -285,7 +286,11 @@ var MazeCreator = function(dimX, dimY) {
                 drawWalls(canvasContext, width);
 
                 if (showHint && isSolutionPath) {
-                    highlightPath(canvasContext, width, "#66ff66", 7);
+                    highlightPath(canvasContext, width, "#66ff66", 6);
+                }
+
+                if (hasBreadcrumb) {
+                    highlightPath(canvasContext, width, "#663300", 8);
                 }
 
                 if (isCurrent) {
@@ -295,6 +300,9 @@ var MazeCreator = function(dimX, dimY) {
                 if (cellType === END) {
                     highlightPath(canvasContext, width, 'green', 2);
                 }
+            },
+            toggleBreadcrumb: function() {
+                hasBreadcrumb = !hasBreadcrumb;
             },
             incrementNeighbor: function() {
                 numNeighbors += 1;
@@ -788,7 +796,7 @@ var MazeCreator = function(dimX, dimY) {
             if (c.getCellType() === END) {
                 break;
             }
-            if (c.getNeighbors < 4) {
+            if (c.getNumNeighbors() < 4) {
                 var nextDir = NORTH;
                 for (; nextDir < 5; nextDir += 1) {
                     var nextCell = getAdjGridCell(c, grid, nextDir % 4);
@@ -946,6 +954,10 @@ var MazeCreator = function(dimX, dimY) {
             }
         },
 
+        toggleBreadcrumb: function()  {
+            m_currentCell.toggleBreadcrumb();
+        },
+
         toggleGhostMode: function()  {
             m_ghostMode = !m_ghostMode;
         },
@@ -962,5 +974,5 @@ var MazeCreator = function(dimX, dimY) {
 
 if (ENABLE_CONSOLE_OUTPUT) {
     var app = MazeCreator(25, 25);
-    app.create(false, true);
+    app.create(true);
 }
